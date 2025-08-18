@@ -106,6 +106,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pytz" },
     { name = "regex" },
+    { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -119,6 +120,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pytz", specifier = ">=2025.2" },
     { name = "regex", specifier = ">=2025.7.34" },
+    { name = "sqlalchemy", specifier = ">=2.0.43" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0" },
 ]
 

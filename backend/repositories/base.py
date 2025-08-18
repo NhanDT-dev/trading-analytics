@@ -29,7 +29,7 @@ class BaseRepository(Generic[ModelType, CreateModelType, UpdateModelType]):
         db_obj = self.model(**data)
         await self.save(db_obj)
 
-    async def get_list_items(self, *fields, **filters) -> Sequence[tuple]:
+    async def get_list_items(self, *fields, **filters):
         """Get filtered list of items"""
         if fields:
             stmt = select(*fields)
@@ -38,7 +38,7 @@ class BaseRepository(Generic[ModelType, CreateModelType, UpdateModelType]):
 
         stmt = stmt.where(**filters)  # type: ignore
         result = await self.db_session.execute(stmt)
-        return result.fetchall()
+        return result.scalars().all()
 
     async def get_item_by_id(
         self, id: Union[str, int], *fields, **filters

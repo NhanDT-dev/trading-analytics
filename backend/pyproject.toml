@@ -13,5 +13,6 @@ dependencies = [
     "pydantic>=2.11.7",
     "pytz>=2025.2",
     "regex>=2025.7.34",
+    "sqlalchemy>=2.0.43",
     "uvicorn[standard]>=0.35.0",
 ]
