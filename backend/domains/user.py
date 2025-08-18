@@ -3,12 +3,11 @@ from typing import Optional
 from config import settings
 from datetime import datetime
 from domains.base import DomainBaseModel
-from models.common import User as UserModel
 from domains.value_objects.email import Email
 from domains.value_objects.password import Password
 
 
-class User(DomainBaseModel):
+class UserDomain(DomainBaseModel):
     def __init__(
         self,
         id: Optional[int],
@@ -32,7 +31,7 @@ class User(DomainBaseModel):
         return datetime.now(tz=pytz.timezone(settings.TIMEZONE))  # type: ignore
 
     @classmethod
-    def create(cls, name: str, email: str, password: str) -> "User":
+    def create(cls, name: str, email: str, password: str) -> "UserDomain":
         """Factory method with business rules"""
 
         # Validate business rules
@@ -76,9 +75,9 @@ class User(DomainBaseModel):
         """Business method: Change password with validation"""
 
         # Verify old password
-        if not Password.verify(old_password, self.password_hash):
+        if not Password.verify(old_password, self.password):
             raise ValueError("Current password is incorrect")
 
         # Set new password
         new_password_vo = Password(new_password)
-        self.password_hash = new_password_vo.hash()
+        self.password = new_password_vo.hash()

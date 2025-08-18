@@ -1,45 +1,86 @@
-from typing import Union, Optional, List, Generic, TypeVar, Dict, Any
+from typing import (
+    Union,
+    Optional,
+    Generic,
+    TypeVar,
+    Dict,
+    Any,
+    Type,
+    Sequence,
+)
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from abc import ABC, abstractmethod
 from pydantic import BaseModel
+from database.model import Base
 
-T = TypeVar("T", bound=BaseModel)  # Hoặc có thể bound với SQLAlchemy Base
+ModelType = TypeVar("ModelType", bound=Base)
+CreateModelType = TypeVar("CreateModelType", bound=BaseModel)
+UpdateModelType = TypeVar("UpdateModelType", bound=BaseModel)
 
 
-class BaseRepository(Generic[T], ABC):
-    def __init__(self, db_session: AsyncSession) -> None:
+class BaseRepository(Generic[ModelType, CreateModelType, UpdateModelType]):
+    def __init__(self, model_type: Type[ModelType], db_session: AsyncSession) -> None:
+        self.model = model_type
         self.db_session = db_session
 
-    @abstractmethod
-    async def create_item(self, item_data: Dict[str, Any]) -> T:
+    async def create_item(self, obj_in: CreateModelType) -> None:
         """Create new item and return created instance"""
-        pass
+        data = obj_in.model_dump()
+        db_obj = self.model(**data)
+        await self.save(db_obj)
 
-    @abstractmethod
-    async def get_list_items(self, **filters) -> List[T]:
+    async def get_list_items(self, *fields, **filters) -> Sequence[tuple]:
         """Get filtered list of items"""
-        pass
+        if fields:
+            stmt = select(*fields)
+        else:
+            stmt = select(self.model)
 
-    @abstractmethod
-    async def get_item_by_id(self, id: Union[str, int]) -> Optional[T]:
+        stmt = stmt.where(**filters)  # type: ignore
+        result = await self.db_session.execute(stmt)
+        return result.fetchall()
+
+    async def get_item_by_id(
+        self, id: Union[str, int], *fields, **filters
+    ) -> Optional[ModelType]:
         """Get single item by ID, return None if not found"""
-        pass
+        if fields:
+            stmt = select(*fields)
+        else:
+            stmt = select(self.model)
 
-    @abstractmethod
+        stmt = stmt.where(self.model.id == id, **filters)  # type: ignore
+        result = await self.db_session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_paginated_items(
         self, limit: int = 10, offset: int = 0, **filters
     ) -> Dict[str, Any]:  # hoặc PaginationResult model
         """Get paginated items with metadata"""
-        pass
+        ...
 
-    @abstractmethod
     async def update_item_by_id(
-        self, id: Union[str, int], update_data: Dict[str, Any]
-    ) -> Optional[T]:
+        self, id: Union[str, int], update_data: UpdateModelType
+    ) -> None:
         """Update item and return updated instance"""
-        pass
+        stmt = select(self.model).where(self.model.id == id)
+        result = await self.db_session.execute(stmt)
+        entity_obj = result.scalar_one_or_none()
 
-    @abstractmethod
+        if not entity_obj:
+            return
+        update_model = self.model(**update_data.model_dump())
+        await self.save(update_model)
+
     async def delete_item_by_id(self, id: Union[str, int]) -> bool:
         """Delete item and return success status"""
-        pass
+        stmt = delete(self.model).where(self.model.id == id)
+        result = await self.db_session.execute(stmt)
+        await self.db_session.commit()
+        return result.rowcount > 0
+
+    async def save(self, entity_obj: ModelType) -> None:
+        """Save item and return created instance"""
+        self.db_session.add(entity_obj)
+        await self.db_session.commit()
+        await self.db_session.refresh(entity_obj)
