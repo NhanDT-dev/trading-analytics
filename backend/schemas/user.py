@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    id: int
     email: str
     name: str
 
