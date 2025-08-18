@@ -1,0 +1,68 @@
+name: local
+
+x-service-common-config: &service-common-config
+  restart: always
+  networks:
+    - trading-analytics-network
+
+services:
+  trading-analytics-db:
+    <<: *service-common-config
+    image: postgres:16-alpine
+    container_name: trading-analytics-db
+    hostname: trading-analytics-db
+    ports:
+      - "35124:5432"
+    environment:
+      POSTGRES_USER: nhandt
+      POSTGRES_PASSWORD: DT123456
+      POSTGRES_DB: trading_analytics
+      POSTGRES_HOST: trading-analytics-db
+      POSTGRES_PORT: 5432
+    volumes:
+      - trading-ana-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms-gateway -d lms-gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  trading-analytics-app:
+    <<: *service-common-config
+    image: local-trading-analytics:latest
+    container_name: trading-analytics-app
+    hostname: trading-analytics-app
+    ports:
+      - 8021:8000
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --fail http://trading-analytics-app:8000/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ${ROOT_DIR}/backend/:/app/
+    entrypoint: ["/bin/bash"]
+    environment:
+      POSTGRES_USER: nhandt
+      POSTGRES_PASSWORD: DT123456
+      POSTGRES_DB: trading_analytics
+      POSTGRES_HOST: trading-analytics-db
+      POSTGRES_PORT: 5432
+
+    command:
+      - -c
+      - |
+        uv sync --locked
+        uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload-exclude .venv/ --reload
+    depends_on:
+      - trading-analytics-db
+
+volumes:
+  trading-ana-db-data:
+
+networks:
+  trading-analytics-network:

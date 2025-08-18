@@ -9,7 +9,7 @@ import pytz
 
 class Model:
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(True), default=datetime.now(tz=pytz.timezone(settings.TIMEZONE))
+        DateTime(True), default=datetime.now(tz=pytz.timezone(settings.TIMEZONE)) # type: ignore
     )
     updated_at: Mapped[datetime] = mapped_column(DateTime(True))
 
